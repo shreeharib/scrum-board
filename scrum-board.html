@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Minimal Futuristic Scrum Board</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      margin: 0;
+      padding: 30px;
+      color: #f0f8ff;
+    }
+  
+    h2 {
+      text-align: center;
+      font-size: 2.2rem;
+      color: #00ffe0;
+      margin-bottom: 25px;
+      text-shadow: 0 0 8px #00ffe0aa;
+    }
+  
+    .add-task {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+  
+    .add-task input {
+      width: 300px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      background: #1e1e2f;
+      color: #f0f8ff;
+      outline: none;
+      box-shadow: 0 0 8px #00ffe055;
+    }
+  
+    .btn {
+      background: linear-gradient(135deg, #00ffe0, #6a5acd);
+      color: #000;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 10px #00ffe0aa;
+    }
+  
+    .btn:hover {
+      background: linear-gradient(135deg, #72ffff, #7f7fff);
+    }
+  
+    .board {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+    }
+  
+    .column {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 15px;
+      flex: 1;
+      min-height: 450px;
+      box-shadow: 0 0 15px rgba(0, 255, 224, 0.1);
+      transition: background 0.3s;
+    }
+  
+    .column h3 {
+      text-align: center;
+      font-size: 1.2rem;
+      color: #72ffff;
+      margin-bottom: 12px;
+      text-shadow: 0 0 6px #00ffe099;
+    }
+  
+    .task {
+      background: #222232;
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: grab;
+      transition: transform 0.2s, box-shadow 0.3s;
+      box-shadow: 0 0 10px rgba(0, 255, 224, 0.15);
+      border-left: 4px solid #6a5acd;
+    }
+  
+    .task:hover {
+      transform: scale(1.02);
+      box-shadow: 0 0 16px rgba(0, 255, 224, 0.3);
+    }
+  
+    .controls {
+      text-align: right;
+      margin-top: 6px;
+    }
+  
+    .controls button {
+      background: none;
+      border: none;
+      color: #bbb;
+      font-size: 1rem;
+      margin-left: 10px;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+  
+    .controls button:hover {
+      color: #fff;
+    }
+  
+    .edit {
+      color: #00ffe0;
+    }
+  
+    ::placeholder {
+      color: #aaa;
+    }
+  
+    @media (max-width: 768px) {
+      .board {
+        flex-direction: column;
+      }
+    }
+  </style>
+  
+</head>
+<body>
+  <h2>🧠 Minimal Futuristic Scrum Board</h2>
+
+  <div class="add-task">
+    <input type="text" id="taskInput" placeholder="Add a new task..." onkeydown="if(event.key === 'Enter') addTask()" />
+    <button class="btn" onclick="addTask()">Add</button>
+  </div>
+
+  <div class="board">
+    <div class="column" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="todo">
+      <h3>To Do</h3>
+    </div>
+    <div class="column" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="inprogress">
+      <h3>In Progress</h3>
+    </div>
+    <div class="column" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="done">
+      <h3>Done</h3>
+    </div>
+  </div>
+
+  <script>
+    let tasks = JSON.parse(localStorage.getItem('scrumTasks')) || [];
+
+    function saveTasks() {
+      localStorage.setItem('scrumTasks', JSON.stringify(tasks));
+    }
+
+    function renderTasks() {
+      document.querySelectorAll('.column').forEach(col => {
+        const status = col.getAttribute('data-status');
+        col.innerHTML = `<h3>${status === 'todo' ? 'To Do' : status === 'inprogress' ? 'In Progress' : 'Done'}</h3>`;
+      });
+
+      tasks.forEach(task => {
+        const div = document.createElement('div');
+        div.className = 'task';
+        div.draggable = true;
+        div.ondragstart = drag;
+        div.id = task.id;
+        div.innerHTML = `
+          <span>${task.text}</span>
+          <div class="controls">
+            <button class="edit" onclick="editTask('${task.id}')">✏️</button>
+            <button onclick="deleteTask('${task.id}')">🗑️</button>
+          </div>
+        `;
+        document.querySelector(`.column[data-status="${task.status}"]`).appendChild(div);
+      });
+    }
+
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (!text) return;
+      const newTask = {
+        id: 'task_' + Date.now(),
+        text,
+        status: 'todo'
+      };
+      tasks.push(newTask);
+      saveTasks();
+      renderTasks();
+      input.value = '';
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter(task => task.id !== id);
+      saveTasks();
+      renderTasks();
+    }
+
+    function editTask(id) {
+      const task = tasks.find(t => t.id === id);
+      const newText = prompt('Edit task:', task.text);
+      if (newText !== null && newText.trim() !== '') {
+        task.text = newText.trim();
+        saveTasks();
+        renderTasks();
+      }
+    }
+
+    function allowDrop(e) {
+      e.preventDefault();
+    }
+
+    function drag(e) {
+      e.dataTransfer.setData('text', e.target.id);
+    }
+
+    function drop(e) {
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text');
+      const task = tasks.find(t => t.id === id);
+      task.status = e.currentTarget.getAttribute('data-status');
+      saveTasks();
+      renderTasks();
+    }
+
+    renderTasks();
+  </script>
+</body>
+</html>
